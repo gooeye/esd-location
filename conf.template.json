@@ -1,0 +1,4 @@
+{
+    "RedisUrl": "redis://username:password@url:port",
+    "MapsApiKey": "YOUR_API_KEY"
+}
