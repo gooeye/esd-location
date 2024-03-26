@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/websocket"
 	"googlemaps.github.io/maps"
 )
 
@@ -234,5 +236,34 @@ func publishTravelTime(orderID string, travelTime time.Duration) error {
 	// Implement the logic to publish travel time to another microservice
 	// Can consider using message queues or HTTP requests  or maybe even websocket
 	log.Printf("Publishing travel time for order %s: %v", orderID, travelTime)
+	type OrderData struct {
+		Order string        `json:"order_id"`
+		Eta   time.Duration `json:"eta"`
+	}
+	jsonData := OrderData{
+		Order: orderID,    // Use the extracted orderId
+		Eta:   travelTime, // Use the extracted travelTime
+	}
+	messageToSend, err := json.Marshal(jsonData)
+	if err != nil {
+		log.Println(err)
+		return fmt.Errorf("%v", err)
+	}
+
+	URL := "ws://localhost:5000/eta"
+	u, _ := url.Parse(URL)
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Println(err)
+		return fmt.Errorf("%v", err)
+	}
+	defer conn.Close()
+
+	// Send the message
+	err = conn.WriteMessage(websocket.TextMessage, []byte(messageToSend))
+	if err != nil {
+		log.Println(err)
+		return fmt.Errorf("%v", err)
+	}
 	return nil
 }
